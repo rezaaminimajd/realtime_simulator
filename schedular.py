@@ -20,24 +20,46 @@ class Processor:
 
 class Dag:
     dags = []
+    sign = 0
 
-    def __init__(self, tasks: list, criticality: float, deadline: int):
+    def __init__(
+            self,
+            tasks: list,
+            criticality: float,
+            deadline: int,
+            arrival_time: int
+    ):
         self.tasks = tasks
         self.criticality = criticality
         self.deadline = deadline
+        self.arrival_time = arrival_time
         Dag.dags.append(self)
 
 
 class Task:
 
-    def __init__(self, index: int, execution_time: list, dependencies: list):
+    def __init__(
+            self,
+            index: int,
+            start_time: int,
+            execution_time: list,
+            dependencies: list,
+    ):
         self.index = index
+        self.start_time = start_time
         self.execution_time = execution_time
-        self.done = False
         self.dependencies = dependencies
+        self.done = False
 
     def get_execution_time(self, p_index):
         return self.execution_time[p_index]
+
+    def turnaround_time(self, p_index):
+        time = 0
+        for dp in self.dependencies:
+            time += dp.get_execution_time(p_index)
+        time += self.get_execution_time(p_index)
+        return time
 
 
 class Edge:
@@ -75,6 +97,7 @@ def create_dags(dags_dict: dict):
             tasks.append(
                 Task(
                     n_index,
+                    d['arrival_time'],
                     task,
                     dependencies
                 )
@@ -94,7 +117,7 @@ def schedule(algorithm):
 if __name__ == '__main__':
     p = int(input("input the number of processors(4,8,16,32): "))
     lf = float(input("input the factor of lower bound(1.1,1.2,1.5): "))
-    a = input("input the scheduling algorithm: ")
+    a = input("input the scheduling algorithm(w: FDWS, f: FDS_MIMF, a: ADS_MIMF): ")
     dags = generate(processors_count=p, lower_bound_factor=lf)
     create_processors(p)
     create_dags(dags)
