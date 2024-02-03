@@ -1,60 +1,103 @@
+from queue import PriorityQueue
+
+
 def calculate_heft(dag):
-    # Extract information from the DAG
-    nodes = dag['nodes']
-    edges = dag['edges']
-    processors_count = len(nodes[0])
+    rank = {}
+    for task in dag['object'].nodes:
+        rank[task] = 0
+    # todo
+    averages = [sum(times) / len(times) for node, times in dag['nodes'].items()]
+    node_sum = sum(averages)
+    averages = [sum(times[0][1]) / len(times[0][1]) for node, times in dag['edges'].items()]
+    edge_sum = sum(averages)
+    makespann = (edge_sum + node_sum)/2
+    print(f"makespannnnnnnnnnnnnnnnnnnnnnn is: {makespann}")
 
-    # Calculate the rank for each task
-    ranks = {}
-    for node in nodes:
-        rank_value = calculate_rank(node, ranks, edges, processors_count)
-        ranks[node] = rank_value
+    # for task in dag['object'].nodes:
+    #     rank[task] = calculate_rank(task, dag['object'], rank)
 
-    # Sort tasks based on rank in descending order
-    sorted_tasks = sorted(ranks.keys(), key=lambda x: ranks[x], reverse=True)
-
-    # Schedule tasks based on EFT policy
-    schedule = {}
-    for task in sorted_tasks:
-        schedule[task] = schedule_task(task, schedule, ranks, edges, processors_count)
-
-    return schedule
+    return makespann
 
 
-def calculate_rank(task, ranks, edges, processors_count):
-    if task in ranks:
-        return ranks[task]
-
-    if not edges[task]:
-        return nodes[task][0]
+def calculate_rank(task, graph, rank):
+    if rank[task] > 0:
+        return rank[task]
 
     max_rank = 0
-    for child in edges[task]:
-        communication_cost = edges[task][child]
-        child_rank = calculate_rank(child, ranks, edges, processors_count)
-        total_cost = nodes[task][0] + communication_cost + child_rank
-        max_rank = max(max_rank, total_cost)
+    for successor in graph.successors(task):
+        successor_rank = calculate_rank(successor, graph, rank)
+        communication_cost = 0
+        rank_value = graph.nodes[successor]['execution_time'] + communication_cost + successor_rank
+        if rank_value > max_rank:
+            max_rank = rank_value
 
+    rank[task] = max_rank
     return max_rank
 
 
-def schedule_task(task, schedule, ranks, edges, processors_count):
-    if task in schedule:
-        return schedule[task]
+def calculate_communication_cost(task1, task2):
+    # Implement your logic to calculate the communication cost between two tasks on different processors
+    # If both tasks are on the same processor, the cost is considered 0
+    # Return the calculated communication cost
+    pass
 
-    if not edges[task]:
-        return 0
 
-    earliest_start_time = 0
-    for parent in edges[task]:
-        communication_cost = edges[parent][task]
-        parent_finish_time = schedule_task(parent, schedule, ranks, edges, processors_count)
-        earliest_start_time = max(earliest_start_time, parent_finish_time + communication_cost)
+def schedule_heft(dag):
+    ready_tasks = set()
+    scheduled_tasks = set()
+    task_start_time = {}
+    processor_finish_time = {}
 
-    # Find the processor with the earliest finish time
-    best_processor = min(range(processors_count), key=lambda p: earliest_start_time + ranks[task][p])
+    for task in dag['object'].nodes:
+        ready_tasks.add(task)
 
-    # Update schedule with task's start time on the selected processor
-    schedule[task] = earliest_start_time
-    return earliest_start_time
+    while ready_tasks:
+        task = select_task(ready_tasks, dag['object'], task_start_time, processor_finish_time)
+        processor = select_processor(task, processor_finish_time)
+        start_time = max(task_start_time[task], processor_finish_time[processor])
+        finish_time = start_time + dag['object'].nodes[task]['execution_time']
+        task_start_time[task] = start_time
+        processor_finish_time[processor] = finish_time
+        ready_tasks.remove(task)
+        scheduled_tasks.add(task)
 
+        for successor in dag['object'].successors(task):
+            ready = True
+            for predecessor in dag['object'].predecessors(successor):
+                if predecessor not in scheduled_tasks:
+                    ready = False
+                    break
+            if ready:
+                ready_tasks.add(successor)
+
+
+def select_task(ready_tasks, graph, task_start_time, processor_finish_time):
+    max_rank = -1
+    selected_task = None
+
+    for task in ready_tasks:
+        rank = calculate_rank(task, graph, task_start_time)
+        if rank > max_rank:
+            max_rank = rank
+            selected_task = task
+
+    return selected_task
+
+
+def select_processor(task, processor_finish_time):
+    min_finish_time = float('inf')
+    selected_processor = None
+
+    for processor, finish_time in processor_finish_time.items():
+        if finish_time < min_finish_time:
+            min_finish_time = finish_time
+            selected_processor = processor
+
+    return selected_processor
+
+
+def calculate_lowerbound(dags):
+    for dag in dags.values():
+        lower_bound = calculate_heft(dag)
+        dag['lower_bound'] = lower_bound
+        print(f"DAG {dag['index']} lowerbound: {lower_bound}")
