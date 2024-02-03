@@ -26,6 +26,9 @@ class Processor:
 class Dag:
     dags = []
     sign = 0
+    base_system_criticality = -1
+    system_criticality = -1
+    under_danger_dag = None
 
     def __init__(
             self,
@@ -41,6 +44,9 @@ class Dag:
         self.deadline = deadline
         self.arrival_time = arrival_time
         self.done_tasks = []
+        if Dag.system_criticality < 0 or criticality < Dag.system_criticality:
+            Dag.system_criticality = criticality
+            Dag.base_system_criticality = criticality
         Dag.dags.append(self)
 
     def update_start_time(self, start_time, task):
@@ -59,23 +65,35 @@ class Dag:
         return execution_time, self.deadline
 
     @staticmethod
-    def check_under_danger():
-        pass
-
-    @staticmethod
     def get_all_critical_dags():
-        minimum = min([d.criticality for d in Dag.dags])
         c = []
         for d in Dag.dags:
-            if d.criticality > minimum:
+            if d.criticality >= Dag.system_criticality:
                 c.append(d)
         if not c:
-            pass
+            if Dag.dags:
+                return Dag.dags
+            return None
         return c
 
     @staticmethod
-    def under_danger_dag():
-        pass
+    def check_under_danger_dag(timer):
+        if Dag.under_danger_dag and not Dag.under_danger_dag.tasks:
+            Dag.system_criticality = Dag.base_system_criticality
+            Dag.under_danger_dag = None
+        under_danger = None
+        pc = len(Processor.processors)
+        for d in Dag.dags:
+            et, dt = d.distance_to_deadline()
+            if et == 0:
+                continue
+            if timer + et // pc > dt:
+                if not under_danger:
+                    under_danger = d.criticality
+                elif under_danger < d.criticality:
+                    under_danger = d.criticality
+        if under_danger:
+            Dag.system_criticality = under_danger
 
     @staticmethod
     def print_information():

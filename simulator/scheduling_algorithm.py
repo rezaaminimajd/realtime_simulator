@@ -52,5 +52,22 @@ class FDS_MIMF:
 class ADS_MIMF:
 
     @staticmethod
-    def get_next_dags(dags, processors_count, sign, timer):
-        pass
+    def get_next_queue(dags, processors_count, sign, timer):
+        Dag.check_under_danger_dag(timer)
+        dags = Dag.get_all_critical_dags()
+        done = True
+        for d in Dag.dags:
+            if d.tasks:
+                done = False
+                break
+        queue = []
+        for i in range(processors_count):
+            index = (sign + i) % len(dags)
+            if dags[index].tasks:
+                if dags[index].tasks[0].start_time <= timer:
+                    t = dags[index].tasks.pop(0)
+                    dags[index].done_tasks.append(t)
+                    queue.append((t, dags[index]))
+            if i - 1 == processors_count:
+                sign = index
+        return queue, sign, done

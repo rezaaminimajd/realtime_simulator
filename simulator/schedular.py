@@ -40,6 +40,9 @@ def schedule(algorithm):
 
     while True:
         available_processors = Processor.get_free_processors(timer)
+        if not available_processors:
+            timer += 1
+            continue
         queue, sign, done = algorithm_class.get_next_queue(
             Dag.dags,
             len(available_processors),
