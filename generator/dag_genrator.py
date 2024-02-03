@@ -2,9 +2,9 @@
 import networkx as nx
 from random import random
 
-from GE import ge_edge, ge_nodes_count
-from FFT import fft_edge, fft_nodes_count
-from HEFT import calculate_heft
+from .GE import ge_edge, ge_nodes_count
+from .FFT import fft_edge, fft_nodes_count
+from .HEFT import calculate_heft
 
 
 def generate_dags(dags_count, m, algorithm, processors_count):
