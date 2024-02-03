@@ -1,3 +1,5 @@
+from models import Dag
+
 class FDWS:
     all_queues = []
     generated = False
