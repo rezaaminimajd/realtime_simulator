@@ -5,16 +5,13 @@ def calculate_heft(dag):
     rank = {}
     for task in dag['object'].nodes:
         rank[task] = 0
-    # todo
     averages = [sum(times) / len(times) for node, times in dag['nodes'].items()]
     node_sum = sum(averages)
     averages = [sum(times[0][1]) / len(times[0][1]) for node, times in dag['edges'].items()]
     edge_sum = sum(averages)
-    makespann = (edge_sum + node_sum)/2
-    print(f"makespannnnnnnnnnnnnnnnnnnnnnn is: {makespann}")
-
-    # for task in dag['object'].nodes:
-    #     rank[task] = calculate_rank(task, dag['object'], rank)
+    makespann = (edge_sum + node_sum) / 2
+    for task in dag['object'].nodes:
+        rank[task] = calculate_rankk(task, dag['object'], rank)
 
     return makespann
 
@@ -33,13 +30,8 @@ def calculate_rank(task, graph, rank):
 
     rank[task] = max_rank
     return max_rank
-
-
-def calculate_communication_cost(task1, task2):
-    # Implement your logic to calculate the communication cost between two tasks on different processors
-    # If both tasks are on the same processor, the cost is considered 0
-    # Return the calculated communication cost
-    pass
+def calculate_rankk(task, graph, rank):
+    return 0
 
 
 def schedule_heft(dag):
