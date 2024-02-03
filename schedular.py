@@ -1,4 +1,5 @@
 from dag_genrator import generate
+from scheduling_algorithm import FDWS, FDS_MIMF, ADS_MIMF
 
 
 class Processor:
@@ -10,12 +11,20 @@ class Processor:
         Processor.processors.append(self)
 
     @staticmethod
-    def get_free_processors(time):
+    def get_free_processors(timer):
         free_processors = []
         for p in Processor.processors:
-            if p.scheduled_time < time:
+            if p.scheduled_time < timer:
                 free_processors.append(p)
         return free_processors
+
+    @staticmethod
+    def get_free_processor(timer):
+        free_processor = None
+        for p in Processor.processors:
+            if p.scheduled_time < timer:
+                free_processor = p
+        return free_processor
 
 
 class Dag:
@@ -24,16 +33,29 @@ class Dag:
 
     def __init__(
             self,
+            index: int,
             tasks: list,
             criticality: float,
             deadline: int,
             arrival_time: int
     ):
+        self.index = index
         self.tasks = tasks
         self.criticality = criticality
         self.deadline = deadline
         self.arrival_time = arrival_time
+        self.done_tasks = []
         Dag.dags.append(self)
+
+    def update_start_time(self, start_time, task):
+        for t in self.tasks:
+            for dep in t.dependencies:
+                if dep.index_from == task.index:
+                    t.start_time = start_time
+
+    def print_information(self):
+        end_time = max([t.end_time for t in self.done_tasks])
+        print(f"dag index: {self.index}, dag arrival time: {self.arrival_time}, dag end time: {end_time}, dag deadline: {self.deadline}")
 
 
 class Task:
@@ -50,6 +72,7 @@ class Task:
         self.execution_time = execution_time
         self.dependencies = dependencies
         self.done = False
+        self.end_time = None
 
     def get_execution_time(self, p_index):
         return self.execution_time[p_index]
@@ -80,7 +103,7 @@ def create_processors(processors_count: int):
 
 
 def create_dags(dags_dict: dict):
-    for d in dags_dict.values():
+    for d_index, d in dags_dict.items():
         tasks = []
         for n_index, task in d['nodes'].items():
             dependencies = []
@@ -102,16 +125,54 @@ def create_dags(dags_dict: dict):
                     dependencies
                 )
             )
-        Dag(tasks, d['criticality'], d['lower_bound'])
+        Dag(d_index, tasks, d['criticality'], d['lower_bound'], d['arrival_time'])
 
 
 def schedule(algorithm):
     timer = 0
+    algorithm_class = find_algorithm_class(algorithm)
 
     while True:
-        available_processors = Processor.get_free_processors()
-        for p in available_processors:
-            pass
+        available_processors = Processor.get_free_processors(timer)
+        queue, sign, done = algorithm_class.get_next_queue(
+            Dag.dags,
+            len(available_processors),
+            Dag.sign,
+            timer
+        )
+        if done:
+            break
+        if sign:
+            Dag.sign = sign
+        if not queue:
+            timer += 1
+        while queue:
+            pr = Processor.get_free_processor(timer)
+            if not pr:
+                timer += 1
+                continue
+            t, d = queue.pop(0)
+            pr.scheduled_time = max(t.start_time, timer) + t.get_execution_time(pr.index)
+            t.end_time = pr.scheduled_time
+            d.update_start_time(pr.scheduled_time, t)
+
+        # print(f"timer: {timer}")
+        timer += 1
+
+    print("scheduling done!")
+    for d in Dag.dags:
+        d.print_information()
+
+
+def find_algorithm_class(algorithm):
+    algorithm_class = None
+    if algorithm == 'w':
+        algorithm_class = FDWS
+    elif algorithm == 'f':
+        algorithm_class = FDS_MIMF
+    elif algorithm == 'a':
+        algorithm_class = ADS_MIMF
+    return algorithm_class
 
 
 if __name__ == '__main__':
