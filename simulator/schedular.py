@@ -39,6 +39,8 @@ def schedule(algorithm):
     algorithm_class = find_algorithm_class(algorithm)
 
     while True:
+        if timer % 500 == 0:
+            print(f'time: {timer}')
         available_processors = Processor.get_free_processors(timer)
         if not available_processors:
             timer += 1
@@ -85,5 +87,8 @@ if __name__ == '__main__':
     a = input("input the scheduling algorithm(w: FDWS, f: FDS_MIMF, a: ADS_MIMF): ")
     dags = generate(processors_count=p, lower_bound_factor=lf)
     create_processors(p)
+    print("processor created!")
     create_dags(dags)
+    print("dags created!")
+    print("start scheduling...")
     schedule(a)

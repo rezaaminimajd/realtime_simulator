@@ -62,7 +62,7 @@ def generate(processors_count: int, lower_bound_factor: float):
     dags = generate_dags(d, m, a, processors_count)
     for d in dags.values():
         lower_bound = calculate_heft(d)
-        d['lower_bound'] = lower_bound * lower_bound_factor
+        d['lower_bound'] = lower_bound * lower_bound_factor + d['arrival_time']
         if s == 'y':
             show_dag(d['object'])
     print(dags)
